@@ -1,0 +1,240 @@
+/**
+ * Created by Katsuya on 2017/01/12.
+ */
+
+
+// AFRAME.registerComponent('mythreejsthing', {
+//     schema: {
+//         // ... Define schema to pass properties from DOM to this component
+//     },
+//
+//     init: function () {
+//         var el = this.el;  // Entity.
+//         var mythreejsobject = // ... Create three.js object.
+//             el.setObject3D('mesh', mythreejsobject);
+//     }
+// });
+
+var address = 'http://54.199.165.221';
+
+// 現在のブロック情報保管用
+var blocks;
+
+var socket = io(address);
+// socket.on('controller', function(data){
+//     if(data.operation == 'forward'){
+//         forward();
+//     }else if(data.operation == 'jump'){
+//         if(!isJumped) {
+//             jump();
+//         }
+//     }
+// });
+
+socket.on('user_position', function(data){
+    var player = document.getElementById('player');
+    var position = player.getAttribute('position');
+    position.x = data.x;
+    position.y = data.y;
+    position.z = data.z;
+    player.setAttribute('position', data);
+
+    player.setAttribute('rotation', '90 ' + (data.rotate + 180) + ' 0');
+});
+
+socket.on('maze_update', function(data){
+    var inputData = [];
+    for (var i = 0; i < data.length; i++) {
+        var raw = [];
+        for (var j = 0; j < data[i].length; j++) {
+            raw.push(data[j][i]);
+        }
+        inputData.push(raw);
+    }
+    blocks = inputData;
+
+    clearBoxes(scene, stage);
+    genBoxes(scene, stage, inputData);
+});
+
+var animate = function(){
+    requestAnimationFrame(animate);
+    TWEEN.update();
+};
+animate();
+var tw;
+var isJumped = false;
+
+function jump() {
+    isJumped = true;
+    var cam = document.getElementById('myCamera');
+    var position = cam.getAttribute('position');
+
+    var pos = { y : 0.5 };
+
+    tw = new TWEEN.Tween(pos)
+        .to({ y: 5 }, 1000)
+        .repeat(1)
+        .yoyo(true)
+        .easing(TWEEN.Easing.Quadratic.Out)
+        .onUpdate(function() {
+            position.y = this.y;
+            cam.setAttribute('position', position);
+        })
+        .onComplete(function(){
+            isJumped = false;
+        });
+    tw.start();
+}
+
+function forward(){
+    var cam = document.getElementById('myCamera');
+
+    var speed = 0.1;
+    var position = cam.getAttribute('position');
+    var rotation = cam.getAttribute('rotation');
+
+    var nx = 8 + Math.floor(position.x + -Math.cos((rotation.y - 90) * Math.PI / 180) * speed * 3);
+    var ny = 8 + Math.floor(position.z + Math.sin((rotation.y - 90) * Math.PI / 180) * speed * 3);
+    if(blocks[nx] == undefined || blocks[nx][ny] == undefined || blocks[nx][ny] == '1'){
+
+    }else{
+        position.x += -Math.cos((rotation.y - 90) * Math.PI / 180) * speed;
+        position.z += Math.sin((rotation.y - 90) * Math.PI / 180) * speed;
+
+        cam.setAttribute('position', position);
+
+
+        sendPosition();
+    }
+}
+
+function clearBoxes(scene, stage){
+    // console.log(scene.children);
+    var n = scene.children.length;
+    // console.log(scene.children.length);
+
+    var removeList = [];
+    for(var i = 0; i < n; i++){
+        // var childId = scene.children[i].boxid;
+        // var re = new RegExp(stage.id + '_box[0-9]*_[0-9]*');
+        // var index = childId? childId.match(re): false;
+        // if(index){
+        //     scene.removeChild(scene.children[i]);
+        // }else{
+        // }
+
+        // console.log(i);
+        if(scene.children[i].getAttribute('boxid')){
+            removeList.push(scene.children[i]);
+        }else{
+
+        }
+    }
+
+    for(var i in removeList){
+        scene.removeChild(removeList[i]);
+    }
+}
+
+function genBoxes(scene, stage, arr){
+
+    var stageWidth = stage.getAttribute('width');
+    var stageHeight = stage.getAttribute('height');
+    var boxW = stageWidth/arr.length;
+    var boxH = stageWidth/arr[0].length;
+    for(var x = 0; x < 16; x++){
+        var outStr = '';
+        for(var z = 0; z < 16; z++) {
+            outStr += arr[x][z] + ',';
+            if(arr[x][z] == '1') {
+                var p = ((x + boxW/2) - stageWidth/2.0) + ' ' + boxW/2.0 + ' ' + ((z + boxW/2) - stageHeight/2.0);
+                var r = '0 0 0';
+
+                // MEMO: 上からの場合は
+                // var s = boxW + ' 0.5 ' + boxH;
+                var s = boxW + ' 1 ' + boxH;
+                // var c = '#4CC3D9';
+                var c = '#323232';
+                var boxNode = genBoxNode(p, r, s, c);
+                boxNode.setAttribute('boxid', stage.getAttribute('id') + '_box' + x + '_' + z)
+                scene.appendChild(boxNode);
+            }
+        }
+    }
+}
+
+function genBoxNode(p, r, s, c) {
+    var boxNode = document.createElement('a-box');
+    boxNode.setAttribute('position', p);
+    boxNode.setAttribute('rotation', r);
+    var size = s.split(' ');
+    boxNode.setAttribute('width', size[0]);
+    boxNode.setAttribute('height', size[1]);
+    boxNode.setAttribute('depth', size[2]);
+    boxNode.setAttribute('color', c);
+
+    return boxNode;
+}
+
+function genObakeNode(p, r, s, v_speed) {
+    var modelNode = document.createElement('a-entity');
+    var src = "src: url(./model/obake/obake3d.obj);mtl: url(./model/obake/obake3d.mtl);";
+    modelNode.setAttribute('id', 'obake');
+    modelNode.setAttribute('obj-loader', src);
+    modelNode.setAttribute('position', p);
+    modelNode.setAttribute('rotation', r);
+    modelNode.setAttribute('scale', s);
+
+    var animNode = document.createElement('a-animation');
+    animNode.setAttribute('dur', v_speed);
+    animNode.setAttribute('attribute', 'position');
+    animNode.setAttribute('frome', '0 0.25 0.0');
+    animNode.setAttribute('to', '0 0.35 0.0');
+    animNode.setAttribute('direction', 'alternate-reverse');
+    animNode.setAttribute('repeat', 'indefinite');
+    animNode.setAttribute('easing', 'ease-out');
+
+    modelNode.appendChild(animNode);
+    return modelNode;
+}
+
+// var xoff = 0.0;
+// var zoff = 100.0;
+// var noise = p5.prototype.noise;
+// var map = p5.prototype.map;
+//
+// function render() {
+//     requestAnimationFrame(render);
+//
+//     var obk = document.getElementById('obake');
+//     var p = obk.getAttribute('position');
+//
+//     // var x = map(noise(xoff), 0.0, 1.0, -8.0, 8.0);
+//     // var z = map(noise(zoff), 0.0, 1.0, -8.0, 8.0);
+//
+//     var x = xoff;
+//     var z = zoff;
+//
+//     p.x = x;
+//     p.z = z;
+//     obk.setAttribute('position', p);
+//
+//     xoff += 0.01;
+//     zoff += 0.01;
+//     // console.log(xoff + ' : ' + zoff);
+// }
+// render();
+
+window.addEventListener("keydown", handleKeydown);
+function handleKeydown(evt){
+    // console.log(evt);
+    if(evt.key == "m"){
+        // forward();
+        if(!isJumped) {
+            jump();
+        }
+    }
+
+    // clearBoxes(scene, stage);
+}

@@ -1,0 +1,14 @@
+# Blender MTL File: 'obake3d.blend'
+# Material Count: 1
+
+newmtl obakeMaterial
+Ns 782.352941
+Ka 1.000000 1.000000 1.000000
+Kd 0.800000 0.800000 0.800000
+Ks 0.040373 0.040373 0.040373
+Ke 0.128000 0.128000 0.128000
+Ni 1.000000
+d 1.000000
+illum 2
+map_Kd ./obake3d_psd3.png
+# map_Kd /Users/HIKARI/Desktop/work/blender/obake3d_psd.png

@@ -1,0 +1,492 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width,initial-scale=1.0,minimum-scale=1.0,maximum-scale=1.0,user-scalable=no">
+  <title>迷路デバッガー</title>
+</head>
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/jquery/3.1.1/jquery.min.js"></script>
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/socket.io/1.7.2/socket.io.min.js"></script>
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/underscore.js/1.8.3/underscore-min.js"></script>
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/normalize/5.0.0/normalize.css" />
+  <script>
+  
+  // 迷路の初期データ
+  var initial_maze_data = [
+    [ 0, 0, 0, 0, 1, 1, 0, 0, 0, 1, 0, 0, 0, 0, 0, 0 ],
+    [ 0, 1, 1, 0, 1, 1, 0, 1, 0, 1, 0, 1, 1, 1, 1, 0 ],
+    [ 0, 1, 1, 0, 1, 1, 0, 1, 1, 1, 0, 1, 0, 0, 1, 1 ],
+    [ 0, 1, 1, 0, 0, 0, 0, 0, 0, 0, 0, 1, 0, 0, 0, 0 ],
+    [ 0, 0, 0, 1, 1, 1, 0, 1, 0, 1, 1, 1, 0, 1, 1, 0 ],
+    [ 1, 1, 1, 1, 1, 1, 0, 1, 0, 1, 0, 1, 0, 1, 0, 0 ],
+    [ 0, 1, 0, 0, 1, 1, 0, 1, 0, 0, 0, 1, 0, 1, 1, 0 ],
+    [ 0, 0, 0, 0, 1, 1, 0, 1, 1, 1, 1, 1, 0, 1, 0, 0 ],
+    [ 0, 1, 1, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 1, 1, 0 ],
+    [ 0, 0, 0, 1, 1, 1, 0, 0, 1, 0, 1, 1, 1, 0, 0, 0 ],
+    [ 0, 1, 0, 0, 0, 1, 1, 0, 1, 1, 0, 0, 0, 0, 1, 1 ],
+    [ 0, 1, 1, 0, 1, 1, 0, 0, 1, 0, 0, 1, 1, 1, 0, 0 ],
+    [ 0, 0, 0, 0, 1, 1, 0, 1, 1, 1, 0, 1, 0, 0, 0, 1 ],
+    [ 0, 1, 1, 0, 1, 1, 0, 1, 0, 1, 0, 1, 0, 1, 0, 1 ],
+    [ 0, 0, 1, 0, 1, 1, 0, 1, 0, 1, 0, 0, 0, 1, 0, 1 ],
+    [ 1, 0, 0, 0, 1, 1, 0, 0, 0, 1, 1, 1, 1, 1, 0, 0 ]
+  ];
+
+  // サーバーに接続
+  var socket = io('http://10.20.52.137');
+
+  // サーバからデータを受信
+  socket.on('maze_update', function(data){
+    _.chain(data).flatten().map(function(type, key){
+      var cells = $('.cell');
+      $(cells[key]).attr('data-type', type);
+    });
+
+    console.log('[maze_update] maze data recieved.');
+  });
+
+  var each_slice = function(arr, slice){
+    return _.values(_.groupBy(arr, function(v, i) { return Math.floor(i / slice) }));
+  };
+
+  $(document).ready(function(){
+
+    // サーバにデータを送信
+    $('#maze_update').click(function(){
+      var maze_data = [];
+      $('.cell').each(function(i, elem){
+        var type = Number( $(elem).attr('data-type') );
+        maze_data.push(type);
+      });
+      var sliced = each_slice(maze_data, 16);
+
+      socket.emit('maze_update', sliced);
+      console.log('[emit]' + JSON.stringify(sliced) );
+    });
+    
+    // セルをクリックしたら色（データタイプ）を変える
+    $('.cell').click(function(e){
+      console.log(e.target);
+      var currentType = Number( $(e.target).attr('data-type') );
+      nextType = currentType >= 1 ? 0 : currentType + 1;
+      $(e.target).attr('data-type', nextType);
+      console.log(nextType);
+    });
+    
+    // 初期データを適用する
+    _.chain(initial_maze_data).flatten().map(function(type, key){
+      var cells = $('.cell');
+      $(cells[key]).attr('data-type', type);
+    });
+
+  });
+</script>
+<style type="text/css">
+body {
+  background-color: #262626;
+  margin: 20px 0 40px 0;
+  padding: 0;
+}
+ul {
+  list-style:none;
+  margin: 0;
+  padding: 0;
+}
+.cell {
+  width: calc(90vw / 16);
+  height: calc(90vw / 16);
+  border: 1px solid #FFF7F6;
+  text-align: center;
+  vertical-align: middle;
+  font-size: 40px;
+  color: #82B297;
+}
+[data-type='0'] {
+  background-color: #FFF7F6;
+}
+[data-type='1'] {
+  background-color: #B28F8C;
+}
+[data-type='2'] {
+  background-color: #82B297;
+}
+[data-type='3'] {
+  background-color: #DCFFEB;
+}
+.row-container {
+  display: -webkit-flex; /* Safari */
+  display: flex;
+  -webkit-flex-direction: column; /* Safari */
+  flex-direction:         column;
+  -webkit-flex-wrap: nowrap; /* Safari */
+  flex-wrap:         nowrap;
+  -webkit-justify-content: space-around; /* Safari */
+  justify-content:         space-around;
+  -webkit-align-items: center; /* Safari */
+  align-items:         center;
+}
+.column-container {
+  display: -webkit-flex; /* Safari */
+  display: flex;
+  -webkit-flex-direction: row; /* Safari */
+  flex-direction:         row;
+  -webkit-flex-wrap: nowrap; /* Safari */
+  flex-wrap:         nowrap;
+  -webkit-justify-content: space-around; /* Safari */
+  justify-content:         space-around;
+  -webkit-align-items: center; /* Safari */
+  align-items:         center;
+}
+.btn-update {
+  width: 400px;
+  height: 68px;
+  margin: 20px auto 20px auto;
+  display: block;
+}
+</style>
+<body>
+  <ul class="row-container">
+    <!-- row 1 -->
+    <li class="row-item">
+      <ul class="column-container">
+        <li class="column-item"><div class="cell" data-type="0">S</div></li>
+        <li class="column-item"><div class="cell" data-type="0"></div></li>
+        <li class="column-item"><div class="cell" data-type="0"></div></li>
+        <li class="column-item"><div class="cell" data-type="0"></div></li>
+        <li class="column-item"><div class="cell" data-type="0"></div></li>
+        <li class="column-item"><div class="cell" data-type="0"></div></li>
+        <li class="column-item"><div class="cell" data-type="0"></div></li>
+        <li class="column-item"><div class="cell" data-type="0"></div></li>
+        <li class="column-item"><div class="cell" data-type="0"></div></li>
+        <li class="column-item"><div class="cell" data-type="0"></div></li>
+        <li class="column-item"><div class="cell" data-type="0"></div></li>
+        <li class="column-item"><div class="cell" data-type="0"></div></li>
+        <li class="column-item"><div class="cell" data-type="0"></div></li>
+        <li class="column-item"><div class="cell" data-type="0"></div></li>
+        <li class="column-item"><div class="cell" data-type="0"></div></li>
+        <li class="column-item"><div class="cell" data-type="0"></div></li>
+      </ul>
+    </li>
+    <!-- row 2 -->
+    <li class="row-item">
+      <ul class="column-container">
+        <li class="column-item"><div class="cell" data-type="0"></div></li>
+        <li class="column-item"><div class="cell" data-type="0"></div></li>
+        <li class="column-item"><div class="cell" data-type="0"></div></li>
+        <li class="column-item"><div class="cell" data-type="0"></div></li>
+        <li class="column-item"><div class="cell" data-type="0"></div></li>
+        <li class="column-item"><div class="cell" data-type="0"></div></li>
+        <li class="column-item"><div class="cell" data-type="0"></div></li>
+        <li class="column-item"><div class="cell" data-type="0"></div></li>
+        <li class="column-item"><div class="cell" data-type="0"></div></li>
+        <li class="column-item"><div class="cell" data-type="0"></div></li>
+        <li class="column-item"><div class="cell" data-type="0"></div></li>
+        <li class="column-item"><div class="cell" data-type="0"></div></li>
+        <li class="column-item"><div class="cell" data-type="0"></div></li>
+        <li class="column-item"><div class="cell" data-type="0"></div></li>
+        <li class="column-item"><div class="cell" data-type="0"></div></li>
+        <li class="column-item"><div class="cell" data-type="0"></div></li>
+      </ul>
+    </li>
+    <!-- row 3 -->
+    <li class="row-item">
+      <ul class="column-container">
+        <li class="column-item"><div class="cell" data-type="0"></div></li>
+        <li class="column-item"><div class="cell" data-type="0"></div></li>
+        <li class="column-item"><div class="cell" data-type="0"></div></li>
+        <li class="column-item"><div class="cell" data-type="0"></div></li>
+        <li class="column-item"><div class="cell" data-type="0"></div></li>
+        <li class="column-item"><div class="cell" data-type="0"></div></li>
+        <li class="column-item"><div class="cell" data-type="0"></div></li>
+        <li class="column-item"><div class="cell" data-type="0"></div></li>
+        <li class="column-item"><div class="cell" data-type="0"></div></li>
+        <li class="column-item"><div class="cell" data-type="0"></div></li>
+        <li class="column-item"><div class="cell" data-type="0"></div></li>
+        <li class="column-item"><div class="cell" data-type="0"></div></li>
+        <li class="column-item"><div class="cell" data-type="0"></div></li>
+        <li class="column-item"><div class="cell" data-type="0"></div></li>
+        <li class="column-item"><div class="cell" data-type="0"></div></li>
+        <li class="column-item"><div class="cell" data-type="0"></div></li>
+      </ul>
+    </li>
+    <!-- row 4 -->
+    <li class="row-item">
+      <ul class="column-container">
+        <li class="column-item"><div class="cell" data-type="0"></div></li>
+        <li class="column-item"><div class="cell" data-type="0"></div></li>
+        <li class="column-item"><div class="cell" data-type="0"></div></li>
+        <li class="column-item"><div class="cell" data-type="0"></div></li>
+        <li class="column-item"><div class="cell" data-type="0"></div></li>
+        <li class="column-item"><div class="cell" data-type="0"></div></li>
+        <li class="column-item"><div class="cell" data-type="0"></div></li>
+        <li class="column-item"><div class="cell" data-type="0"></div></li>
+        <li class="column-item"><div class="cell" data-type="0"></div></li>
+        <li class="column-item"><div class="cell" data-type="0"></div></li>
+        <li class="column-item"><div class="cell" data-type="0"></div></li>
+        <li class="column-item"><div class="cell" data-type="0"></div></li>
+        <li class="column-item"><div class="cell" data-type="0"></div></li>
+        <li class="column-item"><div class="cell" data-type="0"></div></li>
+        <li class="column-item"><div class="cell" data-type="0"></div></li>
+        <li class="column-item"><div class="cell" data-type="0"></div></li>
+      </ul>
+    </li>
+    <!-- row 5 -->
+    <li class="row-item">
+      <ul class="column-container">
+        <li class="column-item"><div class="cell" data-type="0"></div></li>
+        <li class="column-item"><div class="cell" data-type="0"></div></li>
+        <li class="column-item"><div class="cell" data-type="0"></div></li>
+        <li class="column-item"><div class="cell" data-type="0"></div></li>
+        <li class="column-item"><div class="cell" data-type="0"></div></li>
+        <li class="column-item"><div class="cell" data-type="0"></div></li>
+        <li class="column-item"><div class="cell" data-type="0"></div></li>
+        <li class="column-item"><div class="cell" data-type="0"></div></li>
+        <li class="column-item"><div class="cell" data-type="0"></div></li>
+        <li class="column-item"><div class="cell" data-type="0"></div></li>
+        <li class="column-item"><div class="cell" data-type="0"></div></li>
+        <li class="column-item"><div class="cell" data-type="0"></div></li>
+        <li class="column-item"><div class="cell" data-type="0"></div></li>
+        <li class="column-item"><div class="cell" data-type="0"></div></li>
+        <li class="column-item"><div class="cell" data-type="0"></div></li>
+        <li class="column-item"><div class="cell" data-type="0"></div></li>
+      </ul>
+    </li>
+    <!-- row 6 -->
+    <li class="row-item">
+      <ul class="column-container">
+        <li class="column-item"><div class="cell" data-type="0"></div></li>
+        <li class="column-item"><div class="cell" data-type="0"></div></li>
+        <li class="column-item"><div class="cell" data-type="0"></div></li>
+        <li class="column-item"><div class="cell" data-type="0"></div></li>
+        <li class="column-item"><div class="cell" data-type="0"></div></li>
+        <li class="column-item"><div class="cell" data-type="0"></div></li>
+        <li class="column-item"><div class="cell" data-type="0"></div></li>
+        <li class="column-item"><div class="cell" data-type="0"></div></li>
+        <li class="column-item"><div class="cell" data-type="0"></div></li>
+        <li class="column-item"><div class="cell" data-type="0"></div></li>
+        <li class="column-item"><div class="cell" data-type="0"></div></li>
+        <li class="column-item"><div class="cell" data-type="0"></div></li>
+        <li class="column-item"><div class="cell" data-type="0"></div></li>
+        <li class="column-item"><div class="cell" data-type="0"></div></li>
+        <li class="column-item"><div class="cell" data-type="0"></div></li>
+        <li class="column-item"><div class="cell" data-type="0"></div></li>
+      </ul>
+    </li>
+    <!-- row 7 -->
+    <li class="row-item">
+      <ul class="column-container">
+        <li class="column-item"><div class="cell" data-type="0"></div></li>
+        <li class="column-item"><div class="cell" data-type="0"></div></li>
+        <li class="column-item"><div class="cell" data-type="0"></div></li>
+        <li class="column-item"><div class="cell" data-type="0"></div></li>
+        <li class="column-item"><div class="cell" data-type="0"></div></li>
+        <li class="column-item"><div class="cell" data-type="0"></div></li>
+        <li class="column-item"><div class="cell" data-type="0"></div></li>
+        <li class="column-item"><div class="cell" data-type="0"></div></li>
+        <li class="column-item"><div class="cell" data-type="0"></div></li>
+        <li class="column-item"><div class="cell" data-type="0"></div></li>
+        <li class="column-item"><div class="cell" data-type="0"></div></li>
+        <li class="column-item"><div class="cell" data-type="0"></div></li>
+        <li class="column-item"><div class="cell" data-type="0"></div></li>
+        <li class="column-item"><div class="cell" data-type="0"></div></li>
+        <li class="column-item"><div class="cell" data-type="0"></div></li>
+        <li class="column-item"><div class="cell" data-type="0"></div></li>
+      </ul>
+    </li>
+    <!-- row 8 -->
+    <li class="row-item">
+      <ul class="column-container">
+        <li class="column-item"><div class="cell" data-type="0"></div></li>
+        <li class="column-item"><div class="cell" data-type="0"></div></li>
+        <li class="column-item"><div class="cell" data-type="0"></div></li>
+        <li class="column-item"><div class="cell" data-type="0"></div></li>
+        <li class="column-item"><div class="cell" data-type="0"></div></li>
+        <li class="column-item"><div class="cell" data-type="0"></div></li>
+        <li class="column-item"><div class="cell" data-type="0"></div></li>
+        <li class="column-item"><div class="cell" data-type="0"></div></li>
+        <li class="column-item"><div class="cell" data-type="0"></div></li>
+        <li class="column-item"><div class="cell" data-type="0"></div></li>
+        <li class="column-item"><div class="cell" data-type="0"></div></li>
+        <li class="column-item"><div class="cell" data-type="0"></div></li>
+        <li class="column-item"><div class="cell" data-type="0"></div></li>
+        <li class="column-item"><div class="cell" data-type="0"></div></li>
+        <li class="column-item"><div class="cell" data-type="0"></div></li>
+        <li class="column-item"><div class="cell" data-type="0"></div></li>
+      </ul>
+    </li>
+    <!-- row 9 -->
+    <li class="row-item">
+      <ul class="column-container">
+        <li class="column-item"><div class="cell" data-type="0"></div></li>
+        <li class="column-item"><div class="cell" data-type="0"></div></li>
+        <li class="column-item"><div class="cell" data-type="0"></div></li>
+        <li class="column-item"><div class="cell" data-type="0"></div></li>
+        <li class="column-item"><div class="cell" data-type="0"></div></li>
+        <li class="column-item"><div class="cell" data-type="0"></div></li>
+        <li class="column-item"><div class="cell" data-type="0"></div></li>
+        <li class="column-item"><div class="cell" data-type="0"></div></li>
+        <li class="column-item"><div class="cell" data-type="0"></div></li>
+        <li class="column-item"><div class="cell" data-type="0"></div></li>
+        <li class="column-item"><div class="cell" data-type="0"></div></li>
+        <li class="column-item"><div class="cell" data-type="0"></div></li>
+        <li class="column-item"><div class="cell" data-type="0"></div></li>
+        <li class="column-item"><div class="cell" data-type="0"></div></li>
+        <li class="column-item"><div class="cell" data-type="0"></div></li>
+        <li class="column-item"><div class="cell" data-type="0"></div></li>
+      </ul>
+    </li>
+    <!-- row 10 -->
+    <li class="row-item">
+      <ul class="column-container">
+        <li class="column-item"><div class="cell" data-type="0"></div></li>
+        <li class="column-item"><div class="cell" data-type="0"></div></li>
+        <li class="column-item"><div class="cell" data-type="0"></div></li>
+        <li class="column-item"><div class="cell" data-type="0"></div></li>
+        <li class="column-item"><div class="cell" data-type="0"></div></li>
+        <li class="column-item"><div class="cell" data-type="0"></div></li>
+        <li class="column-item"><div class="cell" data-type="0"></div></li>
+        <li class="column-item"><div class="cell" data-type="0"></div></li>
+        <li class="column-item"><div class="cell" data-type="0"></div></li>
+        <li class="column-item"><div class="cell" data-type="0"></div></li>
+        <li class="column-item"><div class="cell" data-type="0"></div></li>
+        <li class="column-item"><div class="cell" data-type="0"></div></li>
+        <li class="column-item"><div class="cell" data-type="0"></div></li>
+        <li class="column-item"><div class="cell" data-type="0"></div></li>
+        <li class="column-item"><div class="cell" data-type="0"></div></li>
+        <li class="column-item"><div class="cell" data-type="0"></div></li>
+      </ul>
+    </li>
+    <!-- row 11 -->
+    <li class="row-item">
+      <ul class="column-container">
+        <li class="column-item"><div class="cell" data-type="0"></div></li>
+        <li class="column-item"><div class="cell" data-type="0"></div></li>
+        <li class="column-item"><div class="cell" data-type="0"></div></li>
+        <li class="column-item"><div class="cell" data-type="0"></div></li>
+        <li class="column-item"><div class="cell" data-type="0"></div></li>
+        <li class="column-item"><div class="cell" data-type="0"></div></li>
+        <li class="column-item"><div class="cell" data-type="0"></div></li>
+        <li class="column-item"><div class="cell" data-type="0"></div></li>
+        <li class="column-item"><div class="cell" data-type="0"></div></li>
+        <li class="column-item"><div class="cell" data-type="0"></div></li>
+        <li class="column-item"><div class="cell" data-type="0"></div></li>
+        <li class="column-item"><div class="cell" data-type="0"></div></li>
+        <li class="column-item"><div class="cell" data-type="0"></div></li>
+        <li class="column-item"><div class="cell" data-type="0"></div></li>
+        <li class="column-item"><div class="cell" data-type="0"></div></li>
+        <li class="column-item"><div class="cell" data-type="0"></div></li>
+      </ul>
+    </li>
+    <!-- row 12 -->
+    <li class="row-item">
+      <ul class="column-container">
+        <li class="column-item"><div class="cell" data-type="0"></div></li>
+        <li class="column-item"><div class="cell" data-type="0"></div></li>
+        <li class="column-item"><div class="cell" data-type="0"></div></li>
+        <li class="column-item"><div class="cell" data-type="0"></div></li>
+        <li class="column-item"><div class="cell" data-type="0"></div></li>
+        <li class="column-item"><div class="cell" data-type="0"></div></li>
+        <li class="column-item"><div class="cell" data-type="0"></div></li>
+        <li class="column-item"><div class="cell" data-type="0"></div></li>
+        <li class="column-item"><div class="cell" data-type="0"></div></li>
+        <li class="column-item"><div class="cell" data-type="0"></div></li>
+        <li class="column-item"><div class="cell" data-type="0"></div></li>
+        <li class="column-item"><div class="cell" data-type="0"></div></li>
+        <li class="column-item"><div class="cell" data-type="0"></div></li>
+        <li class="column-item"><div class="cell" data-type="0"></div></li>
+        <li class="column-item"><div class="cell" data-type="0"></div></li>
+        <li class="column-item"><div class="cell" data-type="0"></div></li>
+      </ul>
+    </li>
+    <!-- row 13 -->
+    <li class="row-item">
+      <ul class="column-container">
+        <li class="column-item"><div class="cell" data-type="0"></div></li>
+        <li class="column-item"><div class="cell" data-type="0"></div></li>
+        <li class="column-item"><div class="cell" data-type="0"></div></li>
+        <li class="column-item"><div class="cell" data-type="0"></div></li>
+        <li class="column-item"><div class="cell" data-type="0"></div></li>
+        <li class="column-item"><div class="cell" data-type="0"></div></li>
+        <li class="column-item"><div class="cell" data-type="0"></div></li>
+        <li class="column-item"><div class="cell" data-type="0"></div></li>
+        <li class="column-item"><div class="cell" data-type="0"></div></li>
+        <li class="column-item"><div class="cell" data-type="0"></div></li>
+        <li class="column-item"><div class="cell" data-type="0"></div></li>
+        <li class="column-item"><div class="cell" data-type="0"></div></li>
+        <li class="column-item"><div class="cell" data-type="0"></div></li>
+        <li class="column-item"><div class="cell" data-type="0"></div></li>
+        <li class="column-item"><div class="cell" data-type="0"></div></li>
+        <li class="column-item"><div class="cell" data-type="0"></div></li>
+      </ul>
+    </li>
+    <!-- row 14 -->
+    <li class="row-item">
+      <ul class="column-container">
+        <li class="column-item"><div class="cell" data-type="0"></div></li>
+        <li class="column-item"><div class="cell" data-type="0"></div></li>
+        <li class="column-item"><div class="cell" data-type="0"></div></li>
+        <li class="column-item"><div class="cell" data-type="0"></div></li>
+        <li class="column-item"><div class="cell" data-type="0"></div></li>
+        <li class="column-item"><div class="cell" data-type="0"></div></li>
+        <li class="column-item"><div class="cell" data-type="0"></div></li>
+        <li class="column-item"><div class="cell" data-type="0"></div></li>
+        <li class="column-item"><div class="cell" data-type="0"></div></li>
+        <li class="column-item"><div class="cell" data-type="0"></div></li>
+        <li class="column-item"><div class="cell" data-type="0"></div></li>
+        <li class="column-item"><div class="cell" data-type="0"></div></li>
+        <li class="column-item"><div class="cell" data-type="0"></div></li>
+        <li class="column-item"><div class="cell" data-type="0"></div></li>
+        <li class="column-item"><div class="cell" data-type="0"></div></li>
+        <li class="column-item"><div class="cell" data-type="0"></div></li>
+      </ul>
+    </li>
+    <!-- row 15 -->
+    <li class="row-item">
+      <ul class="column-container">
+        <li class="column-item"><div class="cell" data-type="0"></div></li>
+        <li class="column-item"><div class="cell" data-type="0"></div></li>
+        <li class="column-item"><div class="cell" data-type="0"></div></li>
+        <li class="column-item"><div class="cell" data-type="0"></div></li>
+        <li class="column-item"><div class="cell" data-type="0"></div></li>
+        <li class="column-item"><div class="cell" data-type="0"></div></li>
+        <li class="column-item"><div class="cell" data-type="0"></div></li>
+        <li class="column-item"><div class="cell" data-type="0"></div></li>
+        <li class="column-item"><div class="cell" data-type="0"></div></li>
+        <li class="column-item"><div class="cell" data-type="0"></div></li>
+        <li class="column-item"><div class="cell" data-type="0"></div></li>
+        <li class="column-item"><div class="cell" data-type="0"></div></li>
+        <li class="column-item"><div class="cell" data-type="0"></div></li>
+        <li class="column-item"><div class="cell" data-type="0"></div></li>
+        <li class="column-item"><div class="cell" data-type="0"></div></li>
+        <li class="column-item"><div class="cell" data-type="0"></div></li>
+      </ul>
+    </li>
+    <!-- row 16 -->
+    <li class="row-item">
+      <ul class="column-container">
+        <li class="column-item"><div class="cell" data-type="0"></div></li>
+        <li class="column-item"><div class="cell" data-type="0"></div></li>
+        <li class="column-item"><div class="cell" data-type="0"></div></li>
+        <li class="column-item"><div class="cell" data-type="0"></div></li>
+        <li class="column-item"><div class="cell" data-type="0"></div></li>
+        <li class="column-item"><div class="cell" data-type="0"></div></li>
+        <li class="column-item"><div class="cell" data-type="0"></div></li>
+        <li class="column-item"><div class="cell" data-type="0"></div></li>
+        <li class="column-item"><div class="cell" data-type="0"></div></li>
+        <li class="column-item"><div class="cell" data-type="0"></div></li>
+        <li class="column-item"><div class="cell" data-type="0"></div></li>
+        <li class="column-item"><div class="cell" data-type="0"></div></li>
+        <li class="column-item"><div class="cell" data-type="0"></div></li>
+        <li class="column-item"><div class="cell" data-type="0"></div></li>
+        <li class="column-item"><div class="cell" data-type="0"></div></li>
+        <li class="column-item"><div class="cell" data-type="0">G</div></li>
+      </ul>
+    </li>
+  </ul>
+  <button class="btn-update" id="maze_update">この迷路で更新する</button>
+</body>
+</html>
+
+
+
+
+
