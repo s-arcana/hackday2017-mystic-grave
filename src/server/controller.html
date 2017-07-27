@@ -38,33 +38,132 @@
     //      right -> 220 <¥>       (68<d>, 67<c>も押される) d¥c
 
     var jump = _.throttle(function(){
-      console.log('[keydown] emit jump.');
-      socket.emit('controller', {
+      //console.log('[keydown] emit jump.');
+      /*socket.emit('controller', {
         operation: 'jump'
-      });
+      });*/
     }, 1000);
     
     var forward = _.throttle(function() {
-      console.log('[keydown] emit forward.');
-      socket.emit('controller', {
+      //console.log('[keydown] emit forward.');
+      /*socket.emit('controller', {
         operation: 'forward'
-      });
+      });*/
     }, 250);
 
     // key event
     $(document).keydown(function(e){
-//      console.log('[keydown] ' + e.keyCode);
+      //console.log('[keydown] ' + e.keyCode);
 
       if ( _.includes([27, 189, 8, 32], e.keyCode) ) {
-        jump();
+        //jump();
       }
 
       if ( _.includes([220, 222, 186], e.keyCode) ) {
-        forward();
+        //forward();
       }
 
     });
   });
+
+
+(function (){
+
+	// ------------------------------------------------------------
+	// ゲームパッドトレース
+	// ------------------------------------------------------------
+	var gamepad_trace = new (function(){
+		var _list = new Array();
+		var _gamepads = new Array();
+
+		// ------------------------------------------------------------
+		// ゲームパッドを登録
+		// ------------------------------------------------------------
+		this.attach = function(gamepad){
+			_gamepads[gamepad.index] = gamepad;
+		};
+
+		// ------------------------------------------------------------
+		// ゲームパッドを除外
+		// ------------------------------------------------------------
+		this.remove = function(gamepad){
+			delete _gamepads[gamepad.index];
+		};
+
+		// ------------------------------------------------------------
+		// 実行
+		// ------------------------------------------------------------
+		this.execute = function(){
+
+			// Gamepad オブジェクトを更新する
+			if(navigator.getGamepads){
+				navigator.getGamepads();
+			}
+      
+      var pressedButton = _.find(_gamepads[0].buttons, function(button){
+        return button.pressed === true;
+      });
+
+      // ボタン
+      if (pressedButton) {
+        console.log('[keydown] emit jump.');
+        socket.emit('controller', {
+          operation: 'jump'
+        });
+      }
+
+      // スティック
+      var axesIndex = _gamepads[0].axes.length - 1;
+      if (_gamepads[0].axes[axesIndex] <= 1.0) {
+        console.log('[keydown] emit forward.');
+        socket.emit('controller', {
+          operation: 'forward'
+        });
+      }
+		};
+
+		// ------------------------------------------------------------
+		// 初期化
+		// ------------------------------------------------------------
+		// ゲームパッドリストを取得する
+		if(navigator.getGamepads){
+      console.log("init");
+			var gamepads = navigator.getGamepads();
+			var i;
+			var num = gamepads.length;
+			for(i=0;i<num;i++){
+				if(gamepads[i]){
+					this.attach(gamepads[i]);
+				}
+			}
+		}
+
+	})();
+
+
+	// ------------------------------------------------------------
+	// ゲームパッドを接続すると実行されるイベント
+	// ------------------------------------------------------------
+	window.addEventListener("gamepadconnected",function(e){
+		gamepad_trace.attach(e.gamepad);
+	});
+
+	// ------------------------------------------------------------
+	// ゲームパッドの接続を解除すると実行されるイベント
+	// ------------------------------------------------------------
+	window.addEventListener("gamepaddisconnected",function(e){
+		gamepad_trace.remove(e.gamepad);
+	});
+
+	// ------------------------------------------------------------
+	// 一定時間隔で、繰り返し実行される関数
+	// ------------------------------------------------------------
+	setInterval(function(){
+		gamepad_trace.execute();
+	},100);
+  
+})();
+
 </script>
 <body>
 </body>
