@@ -2,7 +2,7 @@
 // yum install epel-release
 // yum install nodejs npm --enablerepo=epel
 // npm install socket.io express
-// 
+//
 // nohup node server.js &
 //
 
@@ -24,6 +24,13 @@ app.get('/controller', function (req, res) {
   res.sendfile(__dirname + '/controller.html');
 });
 
+app.get('/webcamera/*', function (req, res) {
+  if (req.params[0] != '') {
+      res.sendfile(__dirname + '/static/webcamera/' + req.params[0]);
+  } else {
+      res.sendfile(__dirname + '/static/webcamera/index.html');
+  }
+});
 io.on('connection', function (socket) {
 
   // maze_update
