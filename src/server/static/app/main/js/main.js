@@ -4,17 +4,20 @@ var address = 'http://54.199.165.221';
 var blocks;
 
 var socket = io(address);
-socket.on('controller', function(data){
-    if(data.operation == 'forward'){
+
+// コントローラの情報を取得
+socket.on('controller', function (data) {
+    if (data.operation == 'forward') {
         forward();
-    }else if(data.operation == 'jump'){
-        if(!isJumped) {
+    } else if (data.operation == 'jump') {
+        if (!isJumped) {
             jump();
         }
     }
 });
 
-socket.on('maze_update', function(data){
+// 迷路の情報を取得
+socket.on('maze_update', function (data) {
     var inputData = [];
     for (var i = 0; i < data.length; i++) {
         var raw = [];
@@ -29,7 +32,8 @@ socket.on('maze_update', function(data){
     genBoxes(scene, stage, inputData);
 });
 
-var animate = function(){
+// ジャンプ時のアニメーションを生成
+var animate = function () {
     requestAnimationFrame(animate);
     TWEEN.update();
 };
@@ -37,32 +41,33 @@ animate();
 var tw, tw2;
 var isJumped = false;
 
+// ジャーーーンプ
 function jump() {
     isJumped = true;
     var cam = document.getElementById('myCamera');
     var position = cam.getAttribute('position');
 
-    var pos = { y : 0.5 };
+    var pos = {y: 0.5};
 
     tw = new TWEEN.Tween(pos)
-        .to({ y: 13 }, 1500)
+        .to({y: 13}, 1500)
         .easing(TWEEN.Easing.Circular.Out)
-        .onUpdate(function() {
+        .onUpdate(function () {
             position.y = this.y;
             cam.setAttribute('position', position);
         })
-        .onComplete(function(){
+        .onComplete(function () {
             isJumped = false;
         });
 
     tw2 = new TWEEN.Tween(pos)
-        .to({ y: 0.5 }, 1500)
+        .to({y: 0.5}, 1500)
         .easing(TWEEN.Easing.Circular.In)
-        .onUpdate(function() {
+        .onUpdate(function () {
             position.y = this.y;
             cam.setAttribute('position', position);
         })
-        .onComplete(function(){
+        .onComplete(function () {
             isJumped = false;
         });
 
@@ -70,6 +75,31 @@ function jump() {
     tw.start();
 }
 
+// ゴーーーール！！！！
+function goal() {
+    var goalObk = document.getElementById('goal');
+    var position = goalObk.getAttribute('position');
+    var pos = {y: 0.5};
+    tw = new TWEEN.Tween(pos)
+        .to({y: 10}, 10000)
+        .easing(TWEEN.Easing.Quadratic.In)
+        .onUpdate(function () {
+            position.y = this.y;
+            goalObk.setAttribute('position', position);
+        })
+        .onComplete(function () {
+            position.y = -3;
+            goalObk.setAttribute('position', position);
+            console.log('comp');
+        });
+    tw.start();
+
+    for (var i = 0; i < childObks.length; i++) {
+        childObks[i].anim.start();
+    }
+}
+
+// 自分の位置を送信
 function sendPosition() {
     var cam = document.getElementById('myCamera');
     var position = cam.getAttribute('position');
@@ -83,56 +113,60 @@ function sendPosition() {
     });
 }
 
-function forward(){
+// 前進する
+function forward() {
     var cam = document.getElementById('myCamera');
 
     var speed = 0.3;
     var position = cam.getAttribute('position');
     var rotation = cam.getAttribute('rotation');
 
-    var nx = 8 + Math.floor(position.x + -Math.cos((rotation.y - 90) * Math.PI / 180) * speed );
-    var ny = 8 + Math.floor(position.z + Math.sin((rotation.y - 90) * Math.PI / 180) * speed );
-    if(blocks[nx] == undefined || blocks[nx][ny] == undefined || blocks[nx][ny] == '1'){
+    var nx = 8 + Math.floor(position.x + -Math.cos((rotation.y - 90) * Math.PI / 180) * speed);
+    var ny = 8 + Math.floor(position.z + Math.sin((rotation.y - 90) * Math.PI / 180) * speed);
+    if (blocks[nx] == undefined || blocks[nx][ny] == undefined || blocks[nx][ny] == '1') {
 
-    }else{
+    } else {
         position.x += -Math.cos((rotation.y - 90) * Math.PI / 180) * speed;
         position.z += Math.sin((rotation.y - 90) * Math.PI / 180) * speed;
-
         cam.setAttribute('position', position);
-
-
         sendPosition();
+
+        // ゴール判定
+        if (dist(position, goalPos) < 1.5) {
+            goal();
+        }
     }
 }
 
-function clearBoxes(scene, stage){
+// 迷路を初期化する
+function clearBoxes(scene, stage) {
     var n = scene.children.length;
     var removeList = [];
-    for(var i = 0; i < n; i++){
-        if(scene.children[i].getAttribute('boxid')){
+    for (var i = 0; i < n; i++) {
+        if (scene.children[i].getAttribute('boxid')) {
             removeList.push(scene.children[i]);
-        }else{
+        } else {
 
         }
     }
 
-    for(var i in removeList){
+    for (var i in removeList) {
         scene.removeChild(removeList[i]);
     }
 }
 
-function genBoxes(scene, stage, arr){
-
+// 配列を受け取って迷路を作る
+function genBoxes(scene, stage, arr) {
     var stageWidth = stage.getAttribute('width');
     var stageHeight = stage.getAttribute('height');
-    var boxW = stageWidth/arr.length;
-    var boxH = stageWidth/arr[0].length;
-    for(var x = 0; x < 16; x++){
+    var boxW = stageWidth / arr.length;
+    var boxH = stageWidth / arr[0].length;
+    for (var x = 0; x < 16; x++) {
         var outStr = '';
-        for(var z = 0; z < 16; z++) {
+        for (var z = 0; z < 16; z++) {
             outStr += arr[x][z] + ',';
-            if(arr[x][z] == '1') {
-                var p = ((x + boxW/2) - stageWidth/2.0) + ' ' + boxW/2.0 + ' ' + ((z + boxW/2) - stageHeight/2.0);
+            if (arr[x][z] == '1') {
+                var p = ((x + boxW / 2) - stageWidth / 2.0) + ' ' + boxW / 2.0 + ' ' + ((z + boxW / 2) - stageHeight / 2.0);
                 var r = '0 0 0';
                 var s = boxW + ' 1 ' + boxH;
                 var c = '#323232';
@@ -144,6 +178,7 @@ function genBoxes(scene, stage, arr){
     }
 }
 
+// 迷路用のボックスを作る
 function genBoxNode(p, r, s, c) {
     var boxNode = document.createElement('a-box');
     boxNode.setAttribute('position', p);
@@ -157,6 +192,7 @@ function genBoxNode(p, r, s, c) {
     return boxNode;
 }
 
+// おばけを作る(結局使ってないけど)
 function genObakeNode(p, r, s, v_speed) {
     var modelNode = document.createElement('a-entity');
     var src = "src: url(./model/obake/obake3d.obj);mtl: url(./model/obake/obake3d.mtl);";
@@ -179,11 +215,13 @@ function genObakeNode(p, r, s, v_speed) {
     return modelNode;
 }
 
+// キーボードテスト用
 window.addEventListener("keydown", handleKeydown);
-function handleKeydown(evt){
-    if(evt.key == "m"){
+
+function handleKeydown(evt) {
+    if (evt.key == "m") {
         // forward();
-        if(!isJumped) {
+        if (!isJumped) {
             jump();
         }
     }
