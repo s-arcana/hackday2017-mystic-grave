@@ -1,4 +1,4 @@
-var address = 'http://54.199.165.221';
+var address = 'http://localhost:8080';
 
 // 現在のブロック情報保管用
 var blocks;
