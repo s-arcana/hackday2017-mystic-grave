@@ -1,35 +1,9 @@
-/**
- * Created by Katsuya on 2017/01/12.
- */
-
-
-// AFRAME.registerComponent('mythreejsthing', {
-//     schema: {
-//         // ... Define schema to pass properties from DOM to this component
-//     },
-//
-//     init: function () {
-//         var el = this.el;  // Entity.
-//         var mythreejsobject = // ... Create three.js object.
-//             el.setObject3D('mesh', mythreejsobject);
-//     }
-// });
-
 var address = 'http://54.199.165.221';
 
 // 現在のブロック情報保管用
 var blocks;
 
 var socket = io(address);
-// socket.on('controller', function(data){
-//     if(data.operation == 'forward'){
-//         forward();
-//     }else if(data.operation == 'jump'){
-//         if(!isJumped) {
-//             jump();
-//         }
-//     }
-// });
 
 socket.on('user_position', function(data){
     var player = document.getElementById('player');
@@ -110,21 +84,9 @@ function forward(){
 }
 
 function clearBoxes(scene, stage){
-    // console.log(scene.children);
     var n = scene.children.length;
-    // console.log(scene.children.length);
-
     var removeList = [];
     for(var i = 0; i < n; i++){
-        // var childId = scene.children[i].boxid;
-        // var re = new RegExp(stage.id + '_box[0-9]*_[0-9]*');
-        // var index = childId? childId.match(re): false;
-        // if(index){
-        //     scene.removeChild(scene.children[i]);
-        // }else{
-        // }
-
-        // console.log(i);
         if(scene.children[i].getAttribute('boxid')){
             removeList.push(scene.children[i]);
         }else{
@@ -150,11 +112,7 @@ function genBoxes(scene, stage, arr){
             if(arr[x][z] == '1') {
                 var p = ((x + boxW/2) - stageWidth/2.0) + ' ' + boxW/2.0 + ' ' + ((z + boxW/2) - stageHeight/2.0);
                 var r = '0 0 0';
-
-                // MEMO: 上からの場合は
-                // var s = boxW + ' 0.5 ' + boxH;
                 var s = boxW + ' 1 ' + boxH;
-                // var c = '#4CC3D9';
                 var c = '#323232';
                 var boxNode = genBoxNode(p, r, s, c);
                 boxNode.setAttribute('boxid', stage.getAttribute('id') + '_box' + x + '_' + z)
@@ -199,42 +157,12 @@ function genObakeNode(p, r, s, v_speed) {
     return modelNode;
 }
 
-// var xoff = 0.0;
-// var zoff = 100.0;
-// var noise = p5.prototype.noise;
-// var map = p5.prototype.map;
-//
-// function render() {
-//     requestAnimationFrame(render);
-//
-//     var obk = document.getElementById('obake');
-//     var p = obk.getAttribute('position');
-//
-//     // var x = map(noise(xoff), 0.0, 1.0, -8.0, 8.0);
-//     // var z = map(noise(zoff), 0.0, 1.0, -8.0, 8.0);
-//
-//     var x = xoff;
-//     var z = zoff;
-//
-//     p.x = x;
-//     p.z = z;
-//     obk.setAttribute('position', p);
-//
-//     xoff += 0.01;
-//     zoff += 0.01;
-//     // console.log(xoff + ' : ' + zoff);
-// }
-// render();
-
 window.addEventListener("keydown", handleKeydown);
 function handleKeydown(evt){
-    // console.log(evt);
     if(evt.key == "m"){
         // forward();
         if(!isJumped) {
             jump();
         }
     }
-
-    // clearBoxes(scene, stage);
 }
