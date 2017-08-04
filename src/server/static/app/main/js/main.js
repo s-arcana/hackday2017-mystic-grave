@@ -93,10 +93,6 @@ function goal() {
             console.log('comp');
         });
     tw.start();
-
-    for (var i = 0; i < childObks.length; i++) {
-        childObks[i].anim.start();
-    }
 }
 
 // 自分の位置を送信
@@ -111,6 +107,13 @@ function sendPosition() {
         z: position.z,
         rotate: rotation.y
     });
+}
+
+// 距離
+function dist(pos1, pos2){
+    var a = pos1.x - pos2.x;
+    var b = pos1.y - pos2.y;
+    return Math.sqrt( a*a + b*b );
 }
 
 // 前進する
@@ -130,6 +133,10 @@ function forward() {
         position.z += Math.sin((rotation.y - 90) * Math.PI / 180) * speed;
         cam.setAttribute('position', position);
         sendPosition();
+
+        var goalPos = document.getElementById('goal').getAttribute('position');
+        console.log('pos: ', position);
+        console.log('goalPos: ', goalPos);
 
         // ゴール判定
         if (dist(position, goalPos) < 1.5) {
@@ -220,9 +227,9 @@ window.addEventListener("keydown", handleKeydown);
 
 function handleKeydown(evt) {
     if (evt.key == "m") {
-        // forward();
-        if (!isJumped) {
-            jump();
-        }
+        forward();
+        // if (!isJumped) {
+        //     jump();
+        // }
     }
 }

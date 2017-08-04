@@ -32,7 +32,7 @@
   ];
 
   // サーバーに接続
-  var socket = io('http://10.20.52.137');
+  var socket = io('http://localhost:8080');
 
   // サーバからデータを受信
   socket.on('maze_update', function(data){
