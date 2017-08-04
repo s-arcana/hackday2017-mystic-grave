@@ -71,8 +71,6 @@ function jump() {
 }
 
 function sendPosition() {
-    var socket = io(address);
-
     var cam = document.getElementById('myCamera');
     var position = cam.getAttribute('position');
     var rotation = cam.getAttribute('rotation');
